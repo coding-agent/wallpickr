@@ -1,9 +1,35 @@
 const std = @import("std");
 const ffi = @import("ffi.zig");
+const fs = std.fs;
 const c = ffi.c;
 
 fn connectSignal(instance: c.gpointer, detailed_signal: [*c]const c.gchar, c_handler: c.GCallback, data: c.gpointer) void {
     _ = c.g_signal_connect_data(@ptrCast(instance), detailed_signal, c_handler, data, null, 0);
+}
+
+fn getWallpapers() ![][]const u8 {
+    var alloc = std.heap.GeneralPurposeAllocator(.{}){};
+    var wp_list = std.ArrayList([]const u8).init(alloc.allocator());
+    defer wp_list.deinit();
+
+    // TODO get the path from ini config file
+    const wp_path = "/home/coding-agent/dev/wallpapers/";
+    var wallpapers_dir = fs.openDirAbsolute(wp_path, .{ .iterate = true }) catch |err| {
+        @panic(@errorName(err));
+    };
+    defer wallpapers_dir.close();
+
+    var iterator = wallpapers_dir.iterate();
+    while (try iterator.next()) |file| {
+        switch (file.kind) {
+            .file => {
+                const file_absolute = try std.mem.concat(alloc.allocator(), u8, &[_][]const u8{ wp_path, file.name });
+                try wp_list.append(file_absolute);
+            },
+            else => {},
+        }
+    }
+    return wp_list.toOwnedSlice();
 }
 
 fn activate(app: *c.GtkApplication) callconv(.C) void {
@@ -15,6 +41,16 @@ fn activate(app: *c.GtkApplication) callconv(.C) void {
     c.gtk_window_set_default_size(@ptrCast(window), 800, 400);
     const main_box = c.gtk_box_new(c.GTK_ORIENTATION_VERTICAL, 2);
     c.gtk_window_set_child(@ptrCast(window), main_box);
+
+    // body
+    const box = c.gtk_box_new(c.GTK_ORIENTATION_HORIZONTAL, 10);
+    const wallpapers_list = getWallpapers() catch @panic("foo");
+    for (wallpapers_list) |wp| {
+        const image = c.gtk_image_new_from_resource(@ptrCast(wp));
+        c.gtk_box_append(@ptrCast(box), @ptrCast(image));
+    }
+
+    c.gtk_box_append(@ptrCast(main_box), @ptrCast(box));
 
     // Exit on ESC key press
     const eck = c.gtk_event_controller_key_new();
