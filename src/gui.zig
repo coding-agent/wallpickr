@@ -8,8 +8,7 @@ fn connectSignal(instance: c.gpointer, detailed_signal: [*c]const c.gchar, c_han
 }
 
 fn getWallpapers() ![][]const u8 {
-    var alloc = std.heap.GeneralPurposeAllocator(.{}){};
-    var wp_list = std.ArrayList([]const u8).init(alloc.allocator());
+    var wp_list = std.ArrayList([]const u8).init(std.heap.c_allocator);
     defer wp_list.deinit();
 
     // TODO get the path from ini config file
@@ -23,7 +22,7 @@ fn getWallpapers() ![][]const u8 {
     while (try iterator.next()) |file| {
         switch (file.kind) {
             .file => {
-                const file_absolute = try std.mem.concat(alloc.allocator(), u8, &[_][]const u8{ wp_path, file.name });
+                const file_absolute = try fs.path.joinZ(std.heap.c_allocator, &[_][]const u8{ wp_path, file.name });
                 try wp_list.append(file_absolute);
             },
             else => {},
@@ -38,20 +37,27 @@ fn activate(app: *c.GtkApplication) callconv(.C) void {
     c.gtk_window_set_title(@ptrCast(window), "Chibino");
     c.gtk_window_set_modal(@ptrCast(window), 1);
     c.gtk_window_set_resizable(@ptrCast(window), 0);
-    c.gtk_window_set_default_size(@ptrCast(window), 800, 400);
+    c.gtk_window_set_default_size(@ptrCast(window), 600, 100);
     const main_box = c.gtk_box_new(c.GTK_ORIENTATION_VERTICAL, 2);
     c.gtk_window_set_child(@ptrCast(window), main_box);
 
     // body
-    const box = c.gtk_box_new(c.GTK_ORIENTATION_HORIZONTAL, 10);
+    const grid = c.gtk_grid_new();
     const wallpapers_list = getWallpapers() catch @panic("foo");
-    for (wallpapers_list) |wp| {
-        const texture = c.gdk_pixbuf_new_from_resource_at_scale(@ptrCast(wp), 100, 100, 0, null);
-        const image = c.gtk_image_new_from_resource(@ptrCast(texture));
-        c.gtk_box_append(@ptrCast(box), @ptrCast(image));
+    for (wallpapers_list, 0..) |wp, i| {
+        const texture = c.gdk_pixbuf_new_from_file(@ptrCast(wp), null);
+        const image = c.gtk_image_new_from_pixbuf(@ptrCast(texture));
+        c.gtk_widget_set_size_request(@ptrCast(image), 400, 375);
+        c.gtk_grid_attach(@ptrCast(grid), @ptrCast(image), @as(c_int, @intCast(i)), 0, 1, 1);
     }
 
-    c.gtk_box_append(@ptrCast(main_box), @ptrCast(box));
+    const adjustement = c.gtk_adjustment_new(0, 0, 0, 1, 1, 200);
+    const scrolled_window = c.gtk_scrolled_window_new();
+    const vport = c.gtk_viewport_new(adjustement, null);
+    c.gtk_scrolled_window_set_policy(@ptrCast(scrolled_window), c.GTK_POLICY_ALWAYS, c.GTK_POLICY_NEVER);
+    c.gtk_viewport_set_child(@ptrCast(vport), @ptrCast(grid));
+    c.gtk_scrolled_window_set_child(@ptrCast(scrolled_window), @ptrCast(vport));
+    c.gtk_box_append(@ptrCast(main_box), @ptrCast(scrolled_window));
 
     // Exit on ESC key press
     const eck = c.gtk_event_controller_key_new();
