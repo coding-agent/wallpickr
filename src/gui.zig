@@ -46,7 +46,8 @@ fn activate(app: *c.GtkApplication) callconv(.C) void {
     const box = c.gtk_box_new(c.GTK_ORIENTATION_HORIZONTAL, 10);
     const wallpapers_list = getWallpapers() catch @panic("foo");
     for (wallpapers_list) |wp| {
-        const image = c.gtk_image_new_from_resource(@ptrCast(wp));
+        const texture = c.gdk_pixbuf_new_from_resource_at_scale(@ptrCast(wp), 100, 100, 0, null);
+        const image = c.gtk_image_new_from_resource(@ptrCast(texture));
         c.gtk_box_append(@ptrCast(box), @ptrCast(image));
     }
 
