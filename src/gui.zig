@@ -1,5 +1,6 @@
 const std = @import("std");
 const ffi = @import("ffi.zig");
+const Config = @import("config.zig");
 const fs = std.fs;
 const c = ffi.c;
 
@@ -70,7 +71,8 @@ fn activate(app: *c.GtkApplication) callconv(.C) void {
     c.gtk_widget_show(@ptrCast(window));
 }
 
-pub fn init(app: *c.GtkApplication) void {
+pub fn init(app: *c.GtkApplication, config: Config) void {
+    _ = config; // autofix
     const handler: c.GCallback = @ptrCast(&activate);
     connectSignal(app, "activate", handler, null);
 }
