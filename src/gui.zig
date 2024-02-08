@@ -1,6 +1,7 @@
 const std = @import("std");
 const ffi = @import("ffi.zig");
 const Config = @import("config.zig");
+const socket = @import("wallpaper.zig");
 const fs = std.fs;
 const c = ffi.c;
 
@@ -102,18 +103,9 @@ fn handleClicked(
     _ = state;
 
     if (keyval == c.GDK_KEY_Return) {
-        //TODO make it actually work in other machines
-        const target = std.mem.concat(std.heap.c_allocator, u8, &[_][]const u8{ "eDP-1,contain:", data.path.* }) catch |err| @panic(@errorName(err));
-        const script1 = [_][]const u8{ "hyprctl", "hyprpaper", "preload", data.path.* };
-        const script2 = [_][]const u8{ "hyprctl", "hyprpaper", "wallpaper", target };
-        const script3 = [_][]const u8{ "hyprctl", "hyprpaper", "unload", "all" };
-        var process1 = std.process.Child.init(&script1, std.heap.c_allocator);
-        var process2 = std.process.Child.init(&script2, std.heap.c_allocator);
-        var process3 = std.process.Child.init(&script3, std.heap.c_allocator);
-        _ = process1.spawnAndWait() catch |err| @panic(@errorName(err));
-        _ = process2.spawnAndWait() catch |err| @panic(@errorName(err));
-        _ = process3.spawnAndWait() catch |err| @panic(@errorName(err));
+        const ally = std.heap.c_allocator;
         c.gtk_window_close(data.win);
+        socket.setWallpaperToCurrentMonitor(ally, data.path.*) catch |err| @panic(@errorName(err));
         return 1;
     }
     return 0;
