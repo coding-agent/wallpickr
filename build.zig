@@ -4,7 +4,10 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const kf_module = b.dependency("known_folders", .{}).module("known-folders");
+    const kf_module = b.dependency(
+        "known_folders",
+        .{},
+    ).module("known-folders");
 
     const ini_module = b.dependency("ini", .{
         .target = target,
