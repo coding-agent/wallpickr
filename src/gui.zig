@@ -1,11 +1,14 @@
 const std = @import("std");
 const ffi = @import("ffi.zig");
 const Config = @import("config.zig");
-const socket = @import("wallpaper.zig");
+const socket = @import("socket.zig");
 const fs = std.fs;
 const c = ffi.c;
 
-const WidgetData = struct { win: *c.GtkWindow, path: *[]const u8 };
+const WidgetData = struct {
+    win: *c.GtkWindow,
+    path: *[]const u8,
+};
 
 fn connectSignal(instance: c.gpointer, detailed_signal: [*c]const c.gchar, c_handler: c.GCallback, data: c.gpointer) void {
     _ = c.g_signal_connect_data(@ptrCast(instance), detailed_signal, c_handler, data, null, 0);

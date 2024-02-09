@@ -1,7 +1,6 @@
 const std = @import("std");
 const ffi = @import("ffi.zig");
 const gui = @import("gui.zig");
-const Config = @import("config.zig");
 const Arena = std.heap.ArenaAllocator;
 const c = ffi.c;
 
