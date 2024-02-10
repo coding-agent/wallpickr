@@ -23,7 +23,7 @@ Also since it's a main goal is to communicate with hyprpaper you need to be usin
 ## Building
 The usual zig way, `zig build`.
 
-For release builds, use `zig build -Drelease-fast`.
+For release builds, use `zig build -Doptimize=ReleaseFast`.
 
 ## Installation
 
