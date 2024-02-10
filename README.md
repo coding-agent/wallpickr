@@ -27,6 +27,6 @@ For release builds, use `zig build -Doptimize=ReleaseFast`.
 
 ## Installation
 
-At the moment you can build from source.
+Arch Linux: wallpickr-git AUR package
 
 For other system users [here](https://wiki.archlinux.org/title/installation_guide)
