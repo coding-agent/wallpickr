@@ -10,9 +10,6 @@ First you must have a config file named `wallpickr/config.ini` in any of the kno
 # config.ini
 
 path=/home/user/path/to/wallpapers/
-# Alternatively
-# path=$HOME/path/to/wallpapers/
-# path=~/path/to/wallpapers/
 ```
 
 ## Dependencies
