@@ -6,70 +6,80 @@ const Monitor = struct {
     focused: bool,
 };
 
-pub fn setWallpaperToCurrentMonitor(alloc: Allocator, path: []const u8) !void {
-    var arena = std.heap.ArenaAllocator.init(alloc);
-    defer arena.deinit();
-    const instance_signature = std.os.getenv("HYPRLAND_INSTANCE_SIGNATURE") orelse
-        return error.MissingInstanceSignature;
-    const socket_path = try std.fs.path.join(alloc, &.{ "/tmp", "hypr", instance_signature, ".socket.sock" });
-
-    const monitors: []Monitor = communication: {
+fn getActiveMonitor(alloc: Allocator, signature: ?[]const u8) ![]const u8 {
+    if (signature) |sign| {
+        const socket_path = try std.fs.path.join(alloc, &.{ "/tmp", "hypr", sign, ".socket.sock" });
         const hl_stream = try std.net.connectUnixSocket(socket_path);
         defer hl_stream.close();
 
         try hl_stream.writeAll("[[BATCH]][-j]/monitors;");
-        var json_reader = std.json.reader(arena.allocator(), hl_stream.reader());
+        var json_reader = std.json.reader(alloc, hl_stream.reader());
 
-        break :communication try std.json.innerParse([]Monitor, arena.allocator(), &json_reader, .{
+        const monitors: []Monitor = try std.json.innerParse([]Monitor, alloc, &json_reader, .{
             .ignore_unknown_fields = true,
             .allocate = .alloc_if_needed,
             .max_value_len = std.json.default_max_value_len,
         });
-    };
+        for (monitors) |monitor| {
+            if (monitor.focused) {
+                return monitor.name;
+            }
+        }
+        unreachable;
+    } else {
+        //TODO get the active monitor from wayland instead
+        return "eDP-1";
+    }
+}
 
-    const hyprpaper_socket_path = try std.fs.path.join(alloc, &.{ "/tmp", "hypr", instance_signature, ".hyprpaper.sock" });
+pub fn setWallpaperToCurrentMonitor(alloc: Allocator, path: []const u8) !void {
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
 
-    const preload_response = preload: {
+    const buf = try arena.allocator().alloc(u8, 100);
+
+    const instance_signature = std.os.getenv("HYPRLAND_INSTANCE_SIGNATURE");
+    const active_monitor = try getActiveMonitor(arena.allocator(), instance_signature);
+
+    const hyprpaper_socket_path =
+        if (instance_signature) |sign|
+        try std.fs.path.join(alloc, &.{ "/tmp", "hypr", sign, ".hyprpaper.sock" })
+    else
+        try std.fs.path.join(alloc, &.{ "/tmp", "hypr", ".hyprpaper.sock" });
+
+    _ = preload: {
         const stream = try std.net.connectUnixSocket(hyprpaper_socket_path);
         defer stream.close();
 
         const msg = try std.mem.concat(arena.allocator(), u8, &[_][]const u8{ "preload ", path });
 
-        break :preload try stream.writer().write(msg);
+        _ = try stream.writer().write(msg);
+        break :preload try stream.read(buf);
     };
-    _ = preload_response;
+    std.debug.print("{s}\n", .{buf});
 
-    const wallpaper_response = wallpaper: {
+    _ = wallpaper: {
         const stream = try std.net.connectUnixSocket(hyprpaper_socket_path);
         defer stream.close();
-        var focused_monitor: ?Monitor = null;
-
-        for (monitors) |monitor| {
-            if (monitor.focused) {
-                focused_monitor = monitor;
-                break;
-            } else {
-                unreachable;
-            }
-        }
 
         const msg = try std.mem.concat(arena.allocator(), u8, &[_][]const u8{
             "wallpaper ",
-            focused_monitor.?.name,
+            active_monitor,
             ",contain:",
             path,
         });
-        break :wallpaper try stream.writer().write(msg);
+        _ = try stream.writer().write(msg);
+        break :wallpaper try stream.read(buf);
     };
-    _ = wallpaper_response;
+    std.debug.print("{s}\n", .{buf});
 
-    const unload_response = preload: {
+    _ = unload: {
         const stream = try std.net.connectUnixSocket(hyprpaper_socket_path);
         defer stream.close();
-
         const msg = "unload all";
 
-        break :preload try stream.writer().write(msg);
+        _ = try stream.writer().write(msg);
+        break :unload try stream.read(buf);
     };
-    _ = unload_response;
+    std.debug.print("{s}\n", .{buf});
 }
