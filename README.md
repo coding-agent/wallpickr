@@ -1,6 +1,7 @@
 # Wallpickr
 
-A very simple wallpaper picker for hyprpaper
+A very simple wallpaper picker for hyprpaper.
+Compatible with Hyprland and River
 
 ## Configuration
 
