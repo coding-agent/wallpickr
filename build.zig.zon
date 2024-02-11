@@ -1,0 +1,19 @@
+.{
+    .name = "wallpickr",
+    .version = "1.0.0",
+
+    .minimum_zig_version = "0.11.0",
+
+    .paths = .{""},
+
+    .dependencies = .{
+        .known_folders = .{
+            .url = "git+https://github.com/coding-agent/known-folders#806ba01b872820004c7dec3117cb0db66b206af6",
+            .hash = "122094b48dea08e241b48d0ec32e3df6965e814091e3cabaff942e62d053f3ff9b5f",
+        },
+        .ini = .{
+            .url = "git+https://github.com/coding-agent/ini#26e4fe7d3ecbe7235744c86c9b00e0f8735fc616",
+            .hash = "1220cd56f45f8a8300a8dc074c29075847bb061b84485a020ea6d73244dae50af518",
+        },
+    },
+}
